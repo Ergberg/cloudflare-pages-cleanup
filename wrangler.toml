@@ -1,0 +1,32 @@
+name = "cleanup"
+main = "src/index.ts"
+compatibility_date = "2022-09-04"
+
+# This worker will delete old deployments on Cloudflare pages
+#
+# The configuration of the worker requires three values:
+# 
+# account_id, CLOUDFLARE_API_TOKEN, numberOfVersionsToKeep.
+#
+# numberOfVersionsToKeep is set further below in this file in the [vars] section
+#
+# YOU MUST SET OTHER TWO VALUES AS SECRETS, i.e. run
+#
+# wrangler secret put account_id
+# wrangler secret put CLOUDFLARE_API_TOKEN
+#
+# Your account_id (Account ID) is shown in the middle of the right column of the worker page 
+# (on https://dash.cloudflare.com/ select "Workers" from the left sidebar navigation) 
+# 
+# CLOUDFLARE_API_TOKEN needs at least the edit permission on [Account] / [Cloudflare Pages]
+# You can create such a token on https://dash.cloudflare.com/profile/api-tokens 
+# The template "Edit Cloudflare Workers" can be used, as it includes the required permission.
+
+[vars]
+# The number of most recent deployments that will be kept on each branch. 
+# Older deployments will be deleted
+numberOfVersionsToKeep = "5"
+
+[triggers]
+# will run daily at 9:00 pm 
+crons = [ "0 21 * * *" ]

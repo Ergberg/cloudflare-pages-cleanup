@@ -10,7 +10,7 @@ compatibility_date = "2022-09-04"
 #
 # numberOfVersionsToKeep is set further below in this file in the [vars] section
 #
-# YOU MUST SET OTHER TWO VALUES AS SECRETS, i.e. run
+# YOU MUST SET THE OTHER TWO VALUES AS SECRETS, i.e. run
 #
 # wrangler secret put account_id
 # wrangler secret put CLOUDFLARE_API_TOKEN

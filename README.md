@@ -54,4 +54,4 @@ The worker will clean all your projects. If you only want to clear specific proj
 ```
 
 ## Further Background
-Read [more about the background](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) of this project on blog.ergberg.tk.
+Read [more about the background](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) of this project on [https://blog.ergberg.tk](https://blog.ergberg.tk).

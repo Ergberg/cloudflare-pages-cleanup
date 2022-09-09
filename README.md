@@ -52,3 +52,6 @@ The worker will clean all your projects. If you only want to clear specific proj
 ---
 > const projectIDs = ["project_name1", "project_name2", ...]; 
 ```
+
+## Further Background
+Read [more about the background](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) of this project on blog.ergberg.tk.

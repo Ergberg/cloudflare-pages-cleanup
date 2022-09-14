@@ -71,3 +71,6 @@ maxVersions = 5          # keep at most 5 versions, no matter how old
 - `maxVersions` is the maximum number of deployments that will survive on a branch of a project.\
   Not defining maxVersions is equivalent to `maxVersions = inf`, i.e. an infinite number of versions.
 
+
+## Further Background
+Read more about the background of [Cloudflare Pages Cleanup](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) on [https://blog.ergberg.tk](https://blog.ergberg.tk).

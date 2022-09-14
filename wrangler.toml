@@ -1,31 +1,47 @@
-name = "cleanup"
+name = "cloudflare_pages_cleanup"
 main = "src/index.ts"
 compatibility_date = "2022-09-04"
 
-# This worker will delete old deployments on Cloudflare pages
+# This worker will delete old deployments of Cloudflare Pages
 #
-# The configuration of the worker requires three values:
-# 
-# account_id, CLOUDFLARE_API_TOKEN, numberOfVersionsToKeep.
-#
-# numberOfVersionsToKeep is set further below in this file in the [vars] section
-#
-# YOU MUST SET OTHER TWO VALUES AS SECRETS, i.e. run
-#
-# wrangler secret put account_id
-# wrangler secret put CLOUDFLARE_API_TOKEN
-#
-# Your account_id (Account ID) is shown in the middle of the right column of the worker page 
-# (on https://dash.cloudflare.com/ select "Workers" from the left sidebar navigation) 
-# 
-# CLOUDFLARE_API_TOKEN needs at least the edit permission on [Account] / [Cloudflare Pages]
-# You can create such a token on https://dash.cloudflare.com/profile/api-tokens 
-# The template "Edit Cloudflare Workers" can be used, as it includes the required permission.
+# See README.md for details
 
 [vars]
-# The number of most recent deployments that will be kept on each branch. 
-# Older deployments will be deleted
-numberOfVersionsToKeep = "5"
+# Wrangler only supports string values for variables
+# Therefore we use a multiline value for the configuration in TOML format
+config="""
+   
+[[rules]]                # the default rule
+                         # as no "branches" or "projects" are defined, 
+                         # this is a catch all for any deployment 
+name = "default"         # optional, a name for debugging 
+maxVersions = 11          # not more than 5 versions on any branch of any project
+maxDays = 30             # and none of these older than 30 days
+
+# What follows are examples for more elaborated rules.
+# Remember to insert such rules above the catch all rule if you want them to take effect.
+# Down here they will never be executed because the above rule matches all projects and all branches.
+
+[[rules]]                # This rule will prevent deletion of deployments 
+                         # for the main branch of the blog project
+name = "blog_production" # optional, a name for debugging
+projects = "blog"        # only for the "blog" project
+branches = "main"        # matches only the main branch
+maxDays = inf            # can be omitted: do not delete deployments based on age
+maxVersions = inf        # can be omitted: do not delete deployments based on number of versions 
+
+[[rules]]                # All other projects main branches
+projects = ".*"          # can be omitted: matches all projects
+branches = "main"        # matches only the main branch
+maxDays = 90             # keep everything younger than 90 days, (no limit on number of versions)
+
+[[rules]]                # for all bugfix branches of the plugin projects
+name = "bugfix"          # optional, a name for debugging
+projects = ".*-plugin"   # matches all projects where the name ends with "-plugin"
+branches = "bug-.*"      # matches all branches where the name starts with "bug-"
+maxVersions = 5          # keep at most 5 versions, no matter how old
+
+"""
 
 [triggers]
 # will run daily at 9:00 pm 

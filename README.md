@@ -7,48 +7,67 @@ tiring.
 
 This package provides a Cloudflare worker that reduces the pile of old deployments on Cloudflare Pages.
 
-
-You can specify _n_, the number of deployments you want to keep.
-
-The worker will delete all but the _n_ most recent deployments on each branch.
-
 ## Installation
 
-Cloudflare's `wrangler` CLI is a prerequisite for installation. When you use Pages, you probably have wrangler already set up. 
-
-* Use `wrangler` to set the two secrets documented in the configuration section
-* Run `wrangler publish` (in this directory) to install the worker on Cloudflare.
-
+The steps to configure the worker are:
+1. Create an API token using the Cloudflare dashboard (or select a fitting existing one)\
+   The API token must at least support the edit permission on [Account] / [Cloudflare Pages].
+   You can create such a token on https://dash.cloudflare.com/profile/api-tokens. 
+   The template "Edit Cloudflare Workers" can be used, as it includes the required permission.
+2. If you are not already logged in, run `npx wrangler login` in the actual directory.
+3. Lookup your account_id (Account ID) by running `npx wrangler whoami`
+4. Use the values from steps 1 & 3 to set the secrets by running:\
+   `npx wrangler secret put account_id`\
+   `npx wrangler secret put CLOUDFLARE_API_TOKEN`
+5. Approve or edit the configuration starting at line 26 of the `wrangler.toml` file 
+6. Optional: Change the schedule of the worker in line 50 of the `wrangler.toml` file
+7. Publish the worker by running `npm run publish`
+8. Optional: run `npx wrangler tail` to watch the worker and trigger it with `curl URL`
 
 ## Configuration
 
-The configuration of the worker requires three values:
- * account_id,
- * CLOUDFLARE_API_TOKEN, 
- * numberOfVersionsToKeep.
+The configuration if given in TOML format. You can define different rules for groups of projects and branches. For each existing deployment, the list of rules is searched from top to bottom. The first matching rule wins.
 
- `numberOfVersionsToKeep` is set in the [vars] section of the `wrangler.toml` file.
+```toml
+[[rules]]                # the default rule
+                         # as no "branches" or "projects" are defined, 
+                         # this is a catch all for any deployment 
+name = "default"         # optional, a name for debugging 
+maxVersions = 5          # not more than 5 versions on any branch of any project
+maxDays = 30             # and none of these older than 30 days
 
+# What follows are examples for more elaborated rules.
+# Remember to insert such rules above the catch all rule if you want them to take effect.
+# Down here they will never be executed because the above rule matches all projects and all branches.
 
-The other two values must be set as worker secrets using \
-`wrangler secret put account_id` and \
-`wrangler secret put CLOUDFLARE_API_TOKEN` \
+[[rules]]                # This rule will prevent deletion of deployments 
+                         # for the main branch of the blog project
+name = "blog_production" # optional, a name for debugging
+projects = "blog"        # only for the "blog" project
+branches = "main"        # matches only the main branch
+maxDays = inf            # can be omitted: do not delete deployments based on age
+maxVersions = inf        # can be omitted: do not delete deployments based on number of versions 
 
- Your account_id (Account ID) is shown in the middle of the right column on Cloudflare's Worker page 
- (on https://dash.cloudflare.com/ select "Workers" from the left sidebar navigation).
- 
- CLOUDFLARE_API_TOKEN needs at least the edit permission on [Account] / [Cloudflare Pages].
+[[rules]]                # All other projects main branches
+name = "production"      # optional, a name for debugging
+projects = ".*"          # can be omitted: matches all projects
+branches = "main"        # matches only the main branch
+maxDays = 90             # keep everything younger than 90 days, (no limit on number of versions)
 
- You can create such a token on
- https://dash.cloudflare.com/profile/api-tokens. 
- The template "Edit Cloudflare Workers" can be used, as it includes the required permission.
-
-If not changed, the worker will run at 9pm each day. This can be altered at the bottom of the `wrangler.toml` file.
-
-The worker will clean all your projects. If you only want to clear specific projects named _project_name1_, _project_name2_, ..., apply the following change to src/index.ts.
-
-```diff
-< const projectIDs = await fetchProjectIDs(env);
----
-> const projectIDs = ["project_name1", "project_name2", ...]; 
+[[rules]]                # for all bugfix branches of the plugin projects
+name = "bugfix"          # optional, a name for debugging
+projects = ".*-plugin"   # matches all projects where the name ends with "-plugin"
+branches = "bug-.*"      # matches all branches where the name starts with "bug-"
+maxVersions = 5          # keep at most 5 versions, no matter how old
 ```
+
+- The rule names are arbitrary TOML bare keys (`[A-Za-z0-0_-]*`).
+- The `projects` entry is a regular expression to match the project names covered by the rule.\
+  Not defining projects in a rule is equivalent to `projects = ".*"`.
+- The `branches` entry is a regular expression to match the branch names covered by the rule.\
+  Not defining branches in a rule is equivalent to `branches = ".*"`.
+- `maxDays` defines the maximum age of a deployment on a branch of a project (in days).\
+  Not defining maxDays in a rule is equivalent to `maxDays = inf` for infinite age.
+- `maxVersions` is the maximum number of deployments that will survive on a branch of a project.\
+  Not defining maxVersions is equivalent to `maxVersions = inf`, i.e. an infinite number of versions.
+

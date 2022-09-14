@@ -15,7 +15,7 @@ config="""
                          # as no "branches" or "projects" are defined, 
                          # this is a catch all for any deployment 
 name = "default"         # optional, a name for debugging 
-maxVersions = 11          # not more than 5 versions on any branch of any project
+maxVersions = 5          # not more than 5 versions on any branch of any project
 maxDays = 30             # and none of these older than 30 days
 
 # What follows are examples for more elaborated rules.

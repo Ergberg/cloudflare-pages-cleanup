@@ -1,101 +1,131 @@
-import { headers, Rule, rules } from "./config";
-import { Project, projects } from "./project";
+import { DEBUG, headers, projectID, Rule, rules } from "./config";
+import { projects } from "./project";
 import { deployments, deploymentURL } from "./deployment";
-import { table } from "./table";
+import { tableString } from "table-string";
+import chalk from "chalk";
 
 const defaultRule = { maxDays: Infinity, maxVersions: Infinity } as Rule;
 
 export default async function cleanUp() {
-  const now = new Date().getTime();
-  console.log(table("Rules", rules));
+  const now = Date.now();
+  DEBUG && console.log("\nRules:\n" + tableString(rules));
   const allProjects = await projects();
-  console.log(
-    table(
-      "Projects",
-      allProjects.map((p, idx) => ({ "#": idx + 1, name: p.name }))
-    )
-  );
+  DEBUG &&
+    console.log(
+      "\nProjects:\n" +
+        tableString(allProjects, [{ name: "", align: "right" }, "name"], {
+          index: allProjects.map((_, idx) => `${idx + 1}.`),
+        })
+    );
 
-  for (let p = 0; p < allProjects.length; ++p) {
-    const project = allProjects[p];
-    const allDeployments = await deployments(project.name);
-    const seen: Record<string, number> = {};
-    const match: Record<string, Rule> = {};
+  if (allProjects && allProjects.length !== 0) {
+    const date = new Date();
+    const idx =
+      Math.trunc(
+        (now - new Date(date.getFullYear(), 0, 0).getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) +
+      date.getHours() +
+      date.getMinutes();
 
-    selectDeletions();
-    logDeployments();
-    executeDeletions();
+    console.log("projectID :>> ", projectID);
+    console.log("idx :>> ", idx);
+    for (let p = 0; p < allProjects.length; ++p) {
+      if (projectID === "round-robin") {
+        allProjects[p] = allProjects[idx % allProjects.length];
+        allProjects.length = 1;
+      } else if (projectID && allProjects[p].name !== projectID) {
+        continue;
+      }
+      const project = allProjects[p];
+      const allDeployments = await deployments(project.name);
+      const seen: Record<string, number> = {};
+      const match: Record<string, Rule> = {};
 
-    function selectDeletions() {
-      for (let d = 0; d < allDeployments.length; ++d) {
-        const deployment = allDeployments[d];
-        const projectName = project.name;
-        const branchName = deployment.deployment_trigger.metadata.branch;
-        const key = `${projectName}/${branchName}`;
-        seen[key] = (seen[key] ? seen[key] : 0) + 1;
-        const rule =
-          match[key] || (match[key] = firstRule(projectName, branchName));
+      selectDeletions();
+      DEBUG && logDeployments();
+      executeDeletions();
 
-        const del =
-          seen[key] > rule.maxVersions ||
-          (now - new Date(deployment.created_on).getTime()) /
-            1000 /
-            60 /
-            60 /
-            24 >
-            rule.maxDays;
+      function selectDeletions() {
+        for (let d = 0; d < allDeployments.length; ++d) {
+          const deployment = allDeployments[d];
+          const projectName = project.name;
+          const branchName = deployment.deployment_trigger.metadata.branch;
+          const key = `${projectName}/${branchName}`;
+          seen[key] = (seen[key] ? seen[key] : 0) + 1;
+          const rule =
+            match[key] || (match[key] = firstRule(projectName, branchName));
 
-        deployment["rule"] = del ? rule.name : "";
+          const del =
+            seen[key] > rule.maxVersions ||
+            (now - new Date(deployment.created_on).getTime()) /
+              1000 /
+              60 /
+              60 /
+              24 >
+              rule.maxDays;
 
-        function firstRule(projectName: string, branchName: string): Rule {
-          return (
-            rules.find(
-              (rule) =>
-                projectName.match(new RegExp(rule.projects)) &&
-                branchName.match(new RegExp(rule.branches))
-            ) ?? defaultRule
-          );
+          deployment["rule"] = del ? rule.name : "";
+
+          function firstRule(projectName: string, branchName: string): Rule {
+            return (
+              rules.find(
+                (rule) =>
+                  projectName.match(new RegExp(rule.projects)) &&
+                  branchName.match(new RegExp(rule.branches))
+              ) ?? defaultRule
+            );
+          }
         }
       }
-    }
 
-    function logDeployments() {
-      console.log(
-        table(
-          project.name,
-          allDeployments.map((d, idx) => ({
-            "#": `${idx + 1}.`,
-            branch: d.deployment_trigger.metadata.branch,
-            "as of": d.created_on,
-            rule: d.rule,
-          }))
-        )
-      );
-    }
+      function logDeployments() {
+        console.log(
+          "\n" +
+            project.name +
+            ":\n" +
+            tableString(
+              allDeployments.map((deployment, idx) => ({
+                "": `${idx + 1}.`,
+                id: deployment.id,
+                branch: deployment.deployment_trigger.metadata.branch,
+                "as of": deployment.created_on,
+                rule: deployment.rule,
+              })),
+              [{ name: "", align: "right" }, "id", "branch", "as of", "rule"]
+            )
+        );
+      }
 
-    async function executeDeletions() {
-      allDeployments
-        .filter((d) => d.rule)
-        .forEach(async (deployment) => {
-          const deleteURL = deploymentURL(project.name) + "/" + deployment.id;
-          const response = await fetch(deleteURL, {
-            method: "DELETE",
-            headers,
-          });
-          if (response.status != 200)
+      async function executeDeletions() {
+        allDeployments
+          .filter((deployment) => deployment.rule)
+          .forEach(async (deployment) => {
+            const deleteURL = deploymentURL(project.name) + "/" + deployment.id;
+            console.log("DELETE " + deleteURL);
+            const response = await fetch(deleteURL, {
+              method: "DELETE",
+              headers,
+            });
+            if (response.status != 200) chalk.level = 1;
             console.log(
-              table(
-                response.status +
-                  " / " +
-                  response.statusText +
-                  "\n" +
-                  deleteURL,
-                ((await response.json()) as { errors: Record<string, any>[] })
-                  .errors
-              )
+              `\n${response.status} / ${chalk.red(
+                response.statusText
+              )}\nDELETE ${deployment.id}\n` +
+                tableString(
+                  (
+                    (await response.json()) as { errors: Record<string, any>[] }
+                  ).errors.map(
+                    (error) => (
+                      (error.message = chalk.red(error.message)), error
+                    )
+                  )
+                )
             );
-        });
+          });
+      }
     }
   }
+  console.log("\nDone");
   return new Response("OK", { status: 200 });
 }

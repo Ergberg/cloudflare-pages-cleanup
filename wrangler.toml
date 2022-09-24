@@ -7,6 +7,12 @@ compatibility_date = "2022-09-04"
 # See README.md for details
 
 [vars]
+project_id="round-robin" # name of one project to clean. Leave empty to clean all your projects.
+                         # Cleaning all projects might not fit into the CPU limits of your plan.
+                         # If you are on a free or bundled plan, you can set project_id to 
+                         # "round-robin" and the cron trigger to "0 * * * *" to every hour clean
+                         # another of your projects
+
 # Wrangler only supports string values for variables
 # Therefore we use a multiline value for the configuration in TOML format
 config="""
@@ -44,5 +50,5 @@ maxVersions = 5          # keep at most 5 versions, no matter how old
 """
 
 [triggers]
-# will run daily at 9:00 pm 
-crons = [ "0 21 * * *" ]
+# will run daily at 9:00 pm UTC
+crons = [ "* * * * *" ]

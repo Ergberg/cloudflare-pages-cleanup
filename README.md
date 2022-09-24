@@ -7,22 +7,26 @@ tiring.
 
 This package provides a Cloudflare worker that reduces the pile of old deployments on Cloudflare Pages.
 
+Read more about the background of [Cloudflare Pages Cleanup](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) on [https://blog.ergberg.tk](https://blog.ergberg.tk).
+
 ## Installation
 
 The steps to configure the worker are:
-1. Create an API token using the Cloudflare dashboard (or select a fitting existing one)\
+0. Run `git clone https://github.com/ergberg/cloudflare-pages-cleanup && cd cloudflare-pages-cleanup`.
+1. Run `npm install`.
+2. Create an API token using the Cloudflare dashboard (or select a fitting existing one)\
    The API token must at least support the edit permission on [Account] / [Cloudflare Pages].
    You can create such a token on https://dash.cloudflare.com/profile/api-tokens. 
    The template "Edit Cloudflare Workers" can be used, as it includes the required permission.
-2. If you are not already logged in, run `npx wrangler login` in the actual directory.
-3. Lookup your account_id (Account ID) by running `npx wrangler whoami`
-4. Use the values from steps 1 & 3 to set the secrets by running:\
+3. Run `npx wrangler login` to login.
+4. Lookup your account_id (Account ID) by running `npx wrangler whoami`.
+5. Use the values from steps 2 & 4 above to set the secrets by running:\
    `npx wrangler secret put account_id`\
    `npx wrangler secret put CLOUDFLARE_API_TOKEN`
-5. Approve or edit the configuration starting at line 26 of the `wrangler.toml` file 
-6. Optional: Change the schedule of the worker in line 50 of the `wrangler.toml` file
-7. Publish the worker by running `npm run publish`
-8. Optional: run `npx wrangler tail` to watch the worker and trigger it with `curl URL`
+6. Approve or edit the [configuration](#configuration) starting at line 10 of the `wrangler.toml` file 
+7. Optional: Change the schedule of the worker at line 54 of the `wrangler.toml` file
+8. Publish the worker by running `npm run publish`.
+9. Optional: run `npx wrangler tail` to watch the worker's output. In another window, trigger the cleanup by running `curl -s https://https://cloudflare_pages_cleanup.[your-subdomain].workers.dev`. The correct URL for your subdomain is shown as part of the output from step 8.
 
 ## Configuration
 
@@ -72,5 +76,84 @@ maxVersions = 5          # keep at most 5 versions, no matter how old
   Not defining maxVersions is equivalent to `maxVersions = inf`, i.e. an infinite number of versions.
 
 
-## Further Background
-Read more about the background of [Cloudflare Pages Cleanup](https://blog.ergberg.tk/function/cicd#cleaning-up-old-pages-deployments) on [https://blog.ergberg.tk](https://blog.ergberg.tk).
+## Example Log Output 
+
+When tailing the log with `npx wrangler tail` the output looks like this:
+
+1. The a dump of the rules from `wrangler.toml` with all short cuts replaced
+2. The list of all projects found
+3. Per project, the list of deployments found. The last column shows which cleanup rule matches that deployment. An empty cell means that this deployment will not be deleted because no cleanup rule matches.
+4. It is not uncommon that some deployments can not be deleted even though a rule matches. A typical reason is that you can not delete a deployment that is actually active. In that case, a error message shows up in the log.
+
+<p>
+<div style="font-family: monospace; line-height:1em; font-size:.8em;margin-top:2em; padding:1em; background-color: var(--code-inline-bg-color);overflow-x:auto;overflow-y:hidden"><pre>
+GET https://cloudflare_pages_cleanup.ergberg.workers.dev/ - Ok @ 9/15/2022, 1:03:44 PM
+  (log) Rules:
+┌─────────────────┬─────────────┬──────────┬───────────┬──────────┐
+│ name            │ maxVersions │ maxDays  │ projects  │ branches │
+├─────────────────┼─────────────┼──────────┼───────────┼──────────┤
+│ default         │ 5           │ 30       │ .*        │ .*       │
+├─────────────────┼─────────────┼──────────┼───────────┼──────────┤
+│ blog_production │ Infinity    │ Infinity │ blog      │ main     │
+├─────────────────┼─────────────┼──────────┼───────────┼──────────┤
+│ rule-2          │ Infinity    │ 90       │ .*        │ main     │
+├─────────────────┼─────────────┼──────────┼───────────┼──────────┤
+│ bugfix          │ 5           │ Infinity │ .*-plugin │ bug-.*   │
+└─────────────────┴─────────────┴──────────┴───────────┴──────────┘
+  (log) fetch:  https://api.cloudflare.com/client/v4/accounts/93976b094538bc1a55f9c7bc9100f75e/pages/projects?page=1
+  (log) Projects:
+┌───┬───────┐
+│ # │ name  │
+├───┼───────┤
+│ 1 │ blog  │
+├───┼───────┤
+│ 2 │ entry │
+└───┴───────┘
+  (log) fetch:  https://api.cloudflare.com/client/v4/accounts/93976b094538bc1a55f9c7bc9100f75e/pages/projects/blog/deployments?page=1
+  (log) blog:
+┌─────┬─────────────┬─────────────────────────────┬─────────┐
+│ #   │ branch      │ as of                       │ rule    │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 1.  │ main        │ 2022-09-11T17:05:13.438212Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 2.  │ main        │ 2022-09-11T12:40:33.575525Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 3.  │ development │ 2022-09-11T12:39:55.468181Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 4.  │ development │ 2022-09-11T10:47:00.280106Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 5.  │ main        │ 2022-09-11T09:22:36.24505Z  │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 6.  │ development │ 2022-09-11T09:22:05.317785Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 7.  │ development │ 2022-09-11T07:59:47.089784Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 8.  │ main        │ 2022-09-09T15:47:09.155304Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 9.  │ development │ 2022-09-09T15:46:44.851433Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 10. │ main        │ 2022-09-08T22:19:05.490083Z │         │
+├─────┼─────────────┼─────────────────────────────┼─────────┤
+│ 11. │ alpha       │ 2022-06-25T22:39:00.508816Z │ default │
+└─────┴─────────────┴─────────────────────────────┴─────────┘
+  (log) fetch:  https://api.cloudflare.com/client/v4/accounts/93976b094538bc1a55f9c7bc9100f75e/pages/projects/entry/deployments?page=1
+  (log) 400 / Bad Request
+https://api.cloudflare.com/client/v4/accounts/93976b094538bc1a55f9c7bc9100f75e/pages/projects/blog/deployments/94448a96-bbcf-4cf0-b7ce-26f2586bca2d:
+┌─────────┬──────────────────────────────────┐
+│ code    │ message                          │
+├─────────┼──────────────────────────────────┤
+│ 8000035 │ Cannot delete aliased deployment │
+└─────────┴──────────────────────────────────┘
+  (log) entry:
+┌────┬─────────────┬─────────────────────────────┬──────┐
+│ #  │ branch      │ as of                       │ rule │
+├────┼─────────────┼─────────────────────────────┼──────┤
+│ 1. │ main        │ 2022-08-17T14:09:12.697376Z │      │
+├────┼─────────────┼─────────────────────────────┼──────┤
+│ 2. │ development │ 2022-08-17T14:08:48.428314Z │      │
+├────┼─────────────┼─────────────────────────────┼──────┤
+│ 3. │ development │ 2022-08-17T12:02:44.555146Z │      │
+├────┼─────────────┼─────────────────────────────┼──────┤
+│ 4. │ main        │ 2022-08-17T12:01:55.851437Z │      │
+└────┴─────────────┴─────────────────────────────┴──────┘
+</pre></div></p>

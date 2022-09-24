@@ -1,4 +1,4 @@
-import { accountAPI, headers } from "./config";
+import { accountAPI, DEBUG, headers } from "./config";
 
 export async function fetchList(endpoint: string) {
   let allResults: object[] = [];
@@ -7,7 +7,7 @@ export async function fetchList(endpoint: string) {
   let page = 0;
   do {
     const url = `${accountAPI}${endpoint}?page=${++page}`;
-    console.log("fetch: ", url);
+    DEBUG && console.log("fetch: ", url);
     const fetched = await fetch(url, { headers });
     json = await fetched.json();
     onThisPage = json?.result ?? [];

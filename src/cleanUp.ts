@@ -1,6 +1,6 @@
 import { DEBUG, headers, projectID, Rule, rules } from "./config";
 import { projects } from "./project";
-import { deployments, deploymentURL } from "./deployment";
+import { Deployment, deployments, deploymentURL } from "./deployment";
 import { tableString } from "table-string";
 import chalk from "chalk";
 
@@ -8,28 +8,16 @@ const defaultRule = { maxDays: Infinity, maxVersions: Infinity } as Rule;
 
 export default async function cleanUp() {
   const now = Date.now();
-  DEBUG && console.log("\nRules:\n" + tableString(rules));
+  showRules();
   const allProjects = await projects();
-  DEBUG &&
-    console.log(
-      "\nProjects:\n" +
-        tableString(allProjects, [{ name: "", align: "right" }, "name"], {
-          index: allProjects.map((_, idx) => `${idx + 1}.`),
-        })
-    );
+  showProjects(allProjects);
 
   if (allProjects && allProjects.length !== 0) {
     const date = new Date();
-    const idx =
-      Math.trunc(
-        (now - new Date(date.getFullYear(), 0, 0).getTime()) /
-          (1000 * 60 * 60 * 24)
-      ) +
-      date.getHours() +
-      date.getMinutes();
-
+    const idx = computeIndex(now, date);
     console.log("projectID :>> ", projectID);
     console.log("idx :>> ", idx);
+
     for (let p = 0; p < allProjects.length; ++p) {
       if (projectID === "round-robin") {
         allProjects[p] = allProjects[idx % allProjects.length];
@@ -56,7 +44,7 @@ export default async function cleanUp() {
           const rule =
             match[key] || (match[key] = firstRule(projectName, branchName));
 
-          const del =
+          const shouldDelete =
             seen[key] > rule.maxVersions ||
             (now - new Date(deployment.created_on).getTime()) /
               1000 /
@@ -65,7 +53,7 @@ export default async function cleanUp() {
               24 >
               rule.maxDays;
 
-          deployment["rule"] = del ? rule.name : "";
+          deployment["rule"] = shouldDelete ? rule.name : "";
 
           function firstRule(projectName: string, branchName: string): Rule {
             return (
@@ -107,25 +95,57 @@ export default async function cleanUp() {
               method: "DELETE",
               headers,
             });
-            if (response.status != 200) chalk.level = 1;
-            console.log(
-              `\n${response.status} / ${chalk.red(
-                response.statusText
-              )}\nDELETE ${deployment.id}\n` +
-                tableString(
-                  (
-                    (await response.json()) as { errors: Record<string, any>[] }
-                  ).errors.map(
-                    (error) => (
-                      (error.message = chalk.red(error.message)), error
-                    )
-                  )
-                )
-            );
+            await handleErrors(response, deployment);
           });
+
+        async function handleErrors(
+          response: Response,
+          deployment: Deployment
+        ) {
+          if (response.status != 200) chalk.level = 1;
+          console.log(
+            `\n${response.status} / ${chalk.red(response.statusText)}\nDELETE ${
+              deployment.id
+            }\n` +
+              tableString(
+                (
+                  (await response.json()) as { errors: Record<string, any>[] }
+                ).errors.map(
+                  (error) => ((error.message = chalk.red(error.message)), error)
+                )
+              )
+          );
+        }
       }
     }
   }
   console.log("\nDone");
   return new Response("OK", { status: 200 });
+}
+
+function computeIndex(now: number, date: Date) {
+  return (
+    Math.trunc(
+      (now - new Date(date.getFullYear(), 0, 0).getTime()) /
+        (1000 * 60 * 60 * 24)
+    ) +
+    date.getHours() +
+    date.getMinutes()
+  );
+}
+
+function showProjects(
+  allProjects: import("/home/ergberg/node/workers/cloudflare-pages-cleanup/src/project").Project[]
+) {
+  DEBUG &&
+    console.log(
+      "\nProjects:\n" +
+        tableString(allProjects, [{ name: "", align: "right" }, "name"], {
+          index: allProjects.map((_, idx) => `${idx + 1}.`),
+        })
+    );
+}
+
+function showRules() {
+  DEBUG && console.log("\nRules:\n" + tableString(rules));
 }

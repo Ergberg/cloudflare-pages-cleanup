@@ -51,4 +51,4 @@ maxVersions = 5          # keep at most 5 versions, no matter how old
 
 [triggers]
 # will run daily at 9:00 pm UTC
-crons = [ "* * * * *" ]
+crons = [ "0 * * * *" ]

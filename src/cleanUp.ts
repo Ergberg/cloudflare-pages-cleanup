@@ -31,7 +31,7 @@ export default async function cleanUp() {
       const match: Record<string, Rule> = {};
 
       selectDeletions();
-      DEBUG && logDeployments();
+      logDeployments();
       executeDeletions();
 
       function selectDeletions() {
@@ -137,8 +137,7 @@ function computeIndex(now: number, date: Date) {
 function showProjects(
   allProjects: import("/home/ergberg/node/workers/cloudflare-pages-cleanup/src/project").Project[]
 ) {
-  DEBUG &&
-    console.log(
+  console.log(
       "\nProjects:\n" +
         tableString(allProjects, [{ name: "", align: "right" }, "name"], {
           index: allProjects.map((_, idx) => `${idx + 1}.`),
@@ -147,5 +146,5 @@ function showProjects(
 }
 
 function showRules() {
-  DEBUG && console.log("\nRules:\n" + tableString(rules));
+  console.log("\nRules:\n" + tableString(rules));
 }

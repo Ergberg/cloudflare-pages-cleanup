@@ -7,10 +7,10 @@ import { Project } from "./projects";
 chalk.level = 1;
 
 const defaultRule = { maxDays: Infinity, maxVersions: Infinity } as Rule;
-const seen: Record<string, number> = {};
-const match: Record<string, Rule> = {};
 
 export function selectDeletions(project: Project) {
+  const seen: Record<string, number> = {};
+  const match: Record<string, Rule> = {};
   const now = Date.now();
 
   project.allDeployments.forEach((deployment) => {

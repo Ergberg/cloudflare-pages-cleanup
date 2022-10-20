@@ -56,6 +56,8 @@ function showDebugInfo(idx: number) {
     console.log(
       projectID === ROUND_ROBIN
         ? `Using ${ROUND_ROBIN} strategy.`
+        : !projectID
+        ? "Cleaning all projects"
         : `Looking for project '${projectID}'.`
     );
   DEBUG && console.log("idx :>> ", idx);

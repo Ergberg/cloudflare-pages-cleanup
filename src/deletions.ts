@@ -18,7 +18,7 @@ export function selectDeletions(project: Project) {
     const key = `${project.name}/${branchName}`;
     seen[key] = (seen[key] ? seen[key] : 0) + 1;
     const rule =
-      match[key] || (match[key] = firstRule(project.name, branchName));
+      match[key] || (match[key] = firstMatchingRule(project.name, branchName));
 
     const shouldDelete =
       seen[key] > rule.maxVersions ||
@@ -27,7 +27,7 @@ export function selectDeletions(project: Project) {
 
     deployment["rule"] = shouldDelete ? rule.name : "";
 
-    function firstRule(projectName: string, branchName: string): Rule {
+    function firstMatchingRule(projectName: string, branchName: string): Rule {
       return (
         rules.find(
           (rule) =>

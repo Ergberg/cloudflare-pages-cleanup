@@ -83,7 +83,7 @@ When tailing the log with `npx wrangler tail` the output looks like this:
 1. The a dump of the rules from `wrangler.toml` with all short cuts replaced
 2. The list of all projects found
 3. Per project, the list of deployments found. The last column shows which cleanup rule matches that deployment. An empty cell means that this deployment will not be deleted because no cleanup rule matches.
-4. It is not uncommon that <span style="color:red">some deployments can not be deleted</span> even though a rule matches. A typical reason is that you can not delete a deployment that is actually active. In that case, a error message shows up in the log.
+4. It is not uncommon that **some deployments can not be deleted** even though a rule matches. A typical reason is that you can not delete a deployment that is actually active. In that case, a error message shows up in the log.
 
 ```
 Rules:

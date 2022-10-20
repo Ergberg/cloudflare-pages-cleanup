@@ -1,0 +1,1 @@
+Release 2.0.0: 2022/10/20 Refactored code and fixed a bug where the worker finished before the work was done.

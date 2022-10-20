@@ -1,7 +1,7 @@
 {
   "name": "cloudflare-pages-cleanup",
   "description": "Automatically delete old deployments at Cloudflare Pages.",
-  "version": "1.0.0",
+  "version": "1.0.1-0",
   "main": "src/index.ts",
   "scripts": {
     "dev": "npx wrangler dev --local",

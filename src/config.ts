@@ -1,4 +1,5 @@
 import { parse } from "@ltd/j-toml";
+import { tableString } from "table-string";
 
 export interface Env {
   config: string;
@@ -36,4 +37,8 @@ export function setEnv(env: Env) {
     if (!rule.maxDays) rule.maxDays = Infinity;
     if (!rule.maxVersions) rule.maxVersions = Infinity;
   });
+}
+
+export function showRules() {
+  console.log("\nRules:\n" + tableString(rules));
 }
